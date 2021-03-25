@@ -1,0 +1,3 @@
+# App
+
+L'App sarà sviluppata in Flutter, prima o poi... Forse...
