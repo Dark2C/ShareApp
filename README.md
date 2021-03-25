@@ -14,7 +14,7 @@ L'idea alla base di ShareApp è quella di *consentire lo scambio di file con* la
  - **I tuoi file sono al sicuro** proprio perché i dati non vengono memorizzati su un server intermedio!
 
 #### Dettagli tecnici
-Per il funzionamento dell'app, sono necessari due server, l'API server ed il Tunnel server, entrambi presenti nella sottocartella backend e documentati nei rispettivi *README.md*
-*L'app è ancora in fase di progettazione...*
+Per il funzionamento dell'app, sono necessari due server, l'API server ed il Tunnel server, entrambi presenti nella sottocartella backend e documentati nei rispettivi *README.md*\
+*L'app è ancora in fase di progettazione...*\
 Ulteriori informazioni, quali ad esempio l'elenco degli endpoint dell'API server, sono presenti all'interno del file *"shareApp.xlsx"*
 
