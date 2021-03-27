@@ -1,11 +1,4 @@
 <?php
-    if($req['request'] === 'getAvatar'){
-        $currUser = getRequestingUser($req);
-        die(json_encode([
-            'status' => 'success',
-            'avatar' => $currUser['avatar']
-        ]));
-    }
     if($req['request'] === 'editAvatar'){
         if(!array_key_exists('avatar', $req)) err('MALFORMED_REQUEST');
         $currUser = getRequestingUser($req);
@@ -19,7 +12,7 @@
             $stmt = $conn->prepare("UPDATE users SET avatar = ? WHERE ID=?");
             $stmt->bind_param("si", $imgName, $currUser['ID']);
             $stmt->execute();
-            unlink('avatars/' . $currUser['avatar']);
+            if($currUser['avatar'] != 'generic.png') unlink('avatars/' . $currUser['avatar']);
             die(json_encode([
                 'status' => 'success',
                 'avatar' => $imgName
@@ -39,4 +32,3 @@
             'status' => 'success'
         ]));
     }
-?>

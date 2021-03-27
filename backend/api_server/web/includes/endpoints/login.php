@@ -19,10 +19,18 @@
                 $stmt->execute();
                 die(json_encode([
                     'status' => 'success',
-                    'authKey' => $authKey,
-                    'avatar' => $result['avatar']
+                    'authKey' => $authKey
                 ]));
             } else err('AUTH_ERROR');
         } else err('MALFORMED_REQUEST');
+    }
+    if($req['request'] === 'getCurrentUser'){
+        $currUser = getRequestingUser($req);
+        die(json_encode([
+            'status' => 'success',
+            'user_ID' => $currUser['ID'],
+            'username' => $currUser['username'],
+            'avatar' => $currUser['avatar']
+        ]));
     }
 ?>

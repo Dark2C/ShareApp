@@ -3,7 +3,7 @@ $conn = new mysqli("localhost","root","","shareapp");
 $TUNNEL = ['host' => '127.0.0.1', 'port' => 1415];
 
 set_time_limit(0);
-//error_reporting(0);
+error_reporting(0);
 header('Content-Type: application/json');
 
 include 'includes/utils.php';

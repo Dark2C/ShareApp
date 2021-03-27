@@ -1,3 +1,3 @@
 # App
 
-L'App sarà sviluppata in Flutter, prima o poi... Forse...
+L'App è sviluppata in Flutter, per ulteriori informazioni: https://flutter.dev/
