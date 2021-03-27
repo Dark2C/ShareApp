@@ -1,9 +1,9 @@
+import 'dart:convert';
 import 'globals.dart';
+import 'home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home_page.dart';
 import 'set_profile_photo.dart';
 
 void main() {
@@ -14,16 +14,14 @@ class FirstScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ShareApp',
-      theme: new ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF212121),
-        accentColor: const Color(0xFF64ffda),
-        canvasColor: const Color(0xFF303030),
-      ),
-      home: MyLoginForm(title: 'ShareApp'),
-    );
+        title: 'ShareApp',
+        theme: new ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.blue,
+            primaryColor: const Color(0xFF212121),
+            accentColor: const Color(0xFF64ffda),
+            canvasColor: const Color(0xFF303030)),
+        home: MyLoginForm(title: 'ShareApp'));
   }
 }
 
@@ -99,16 +97,14 @@ class _MyLoginFormState extends State<MyLoginForm> {
 
   Widget loginForm() {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text('Benvenuto',
                 style: new TextStyle(
-                    fontSize: 48.0,
+                    fontSize: 48,
                     color: const Color(0xFFffffff),
                     fontWeight: FontWeight.w900,
                     fontFamily: "Roboto")),
@@ -117,10 +113,9 @@ class _MyLoginFormState extends State<MyLoginForm> {
               child: TextFormField(
                 controller: _username,
                 decoration: InputDecoration(
-                  border: UnderlineInputBorder(),
-                  hintText: 'Username',
-                  contentPadding: EdgeInsets.all(20.0),
-                ),
+                    border: UnderlineInputBorder(),
+                    hintText: 'Username',
+                    contentPadding: EdgeInsets.all(20.0)),
               ),
             ),
             Padding(
@@ -135,14 +130,12 @@ class _MyLoginFormState extends State<MyLoginForm> {
                 autocorrect: false,
               ),
             ),
-            new Padding(
-              padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 12.0),
-            ),
+            new Padding(padding: const EdgeInsets.all(6)),
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: TextButton(
                     onPressed: handleLogin,
-                    child: Text("Login", style: new TextStyle(fontSize: 24.0)),
+                    child: Text("Login", style: new TextStyle(fontSize: 24)),
                     style: ButtonStyle(
                         side: MaterialStateProperty.all(
                             BorderSide(width: 2, color: Colors.blueGrey)),
@@ -150,22 +143,21 @@ class _MyLoginFormState extends State<MyLoginForm> {
                             vertical: 20, horizontal: 50))))),
             Text('- o -',
                 style: new TextStyle(
-                    fontSize: 24.0,
+                    fontSize: 24,
                     color: const Color(0xFFdddddd),
                     fontFamily: "Roboto")),
             Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
                 child: TextButton(
-                  onPressed: handleRegistration,
-                  child:
-                      Text("Registrati", style: new TextStyle(fontSize: 24.0)),
-                  style: ButtonStyle(
-                      side: MaterialStateProperty.all(
-                          BorderSide(width: 2, color: Colors.blueGrey)),
-                      padding: MaterialStateProperty.all(
-                          EdgeInsets.symmetric(vertical: 20, horizontal: 50))),
-                )),
+                    onPressed: handleRegistration,
+                    child: Text("Registrati",
+                        style: new TextStyle(fontSize: 24.0)),
+                    style: ButtonStyle(
+                        side: MaterialStateProperty.all(
+                            BorderSide(width: 2, color: Colors.blueGrey)),
+                        padding: MaterialStateProperty.all(EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 50))))),
           ],
         ),
       ),
@@ -201,9 +193,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
           await sharedPrefs.setString('authKey', json['authKey']);
           checkLogin().then((value) {
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => HomePage()),
-            );
+                context, MaterialPageRoute(builder: (context) => HomePage()));
           });
         } else {
           var err = AlertDialog(
@@ -219,7 +209,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
       http
           .post(Uri.https(API_SERVER_ADDR, '/'),
               headers: <String, String>{
-                'Content-Type': 'application/json; charset=UTF-8',
+                'Content-Type': 'application/json; charset=UTF-8'
               },
               body: jsonEncode(<String, dynamic>{
                 'request': 'register',
@@ -231,12 +221,11 @@ class _MyLoginFormState extends State<MyLoginForm> {
           .then((response) async {
         Map<String, dynamic> json = jsonDecode(response.body);
         if (json['status'] == 'success') {
+          sharedPrefs.setString('avatar', 'generic');
           sharedPrefs.setString('authKey', json['authKey']);
           checkLogin().then((value) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => SetProfilePhoto()),
-            );
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (context) => SetProfilePhoto()));
           });
         } else {
           var err = AlertDialog(

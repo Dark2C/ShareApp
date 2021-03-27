@@ -1,27 +1,25 @@
-import 'globals.dart';
-import 'dart:typed_data';
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'package:random_string/random_string.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'globals.dart';
+import 'home_page.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:random_string/random_string.dart';
 
 class SetProfilePhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ShareApp',
-      theme: new ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF212121),
-        accentColor: const Color(0xFF64ffda),
-        canvasColor: const Color(0xFF303030),
-      ),
-      home: MySetProfilePhoto(title: 'ShareApp'),
-    );
+        title: 'ShareApp',
+        theme: new ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.blue,
+            primaryColor: const Color(0xFF212121),
+            accentColor: const Color(0xFF64ffda),
+            canvasColor: const Color(0xFF303030)),
+        home: MySetProfilePhoto(title: 'ShareApp'));
   }
 }
 
@@ -96,30 +94,25 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
     isChanged = true;
 
     return new Scaffold(
-      appBar: new AppBar(
-        title: new Text('Imposta immagine'),
-      ),
+      appBar: new AppBar(title: new Text('Imposta immagine')),
       body: new Center(
         child: new Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              new Text(
-                "Immagine corrente",
-                style: new TextStyle(
-                    fontSize: 32.0,
-                    color: const Color(0xFFffffff),
-                    fontWeight: FontWeight.w700,
-                    fontFamily: "Roboto"),
-              ),
+              new Text("Immagine corrente",
+                  style: new TextStyle(
+                      fontSize: 32,
+                      color: const Color(0xFFffffff),
+                      fontWeight: FontWeight.w700,
+                      fontFamily: "Roboto")),
               new ClipOval(
                 child: new Image(
-                  image: pictureImage,
-                  fit: BoxFit.fill,
-                  width: 256,
-                  height: 256,
-                ),
+                    image: pictureImage,
+                    fit: BoxFit.fill,
+                    width: 256,
+                    height: 256),
               ),
               new Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -129,10 +122,8 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
                     new TextButton(
                         key: null,
                         onPressed: handleEliminaFoto,
-                        child: new Text(
-                          "Elimina",
-                          style: new TextStyle(fontSize: 12.0),
-                        ),
+                        child: new Text("Elimina",
+                            style: new TextStyle(fontSize: 12)),
                         style: ButtonStyle(
                             side: MaterialStateProperty.all(
                                 BorderSide(width: 2, color: Colors.blueGrey)),
@@ -142,10 +133,8 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
                     new TextButton(
                         key: null,
                         onPressed: handleRandomFoto,
-                        child: new Text(
-                          "Genera casualmente",
-                          style: new TextStyle(fontSize: 12.0),
-                        ),
+                        child: new Text("Genera casualmente",
+                            style: new TextStyle(fontSize: 12)),
                         style: ButtonStyle(
                             side: MaterialStateProperty.all(
                                 BorderSide(width: 2, color: Colors.blueGrey)),
@@ -155,10 +144,8 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
                     new TextButton(
                         key: null,
                         onPressed: handleUploadFoto,
-                        child: new Text(
-                          "Carica",
-                          style: new TextStyle(fontSize: 12.0),
-                        ),
+                        child: new Text("Carica",
+                            style: new TextStyle(fontSize: 12)),
                         style: ButtonStyle(
                             side: MaterialStateProperty.all(
                                 BorderSide(width: 2, color: Colors.blueGrey)),
@@ -175,13 +162,13 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
                         key: null,
                         onPressed: () {
                           Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => HomePage()),
-                          );
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => HomePage()));
                         },
                         child: new Text(
                           "Annulla",
-                          style: new TextStyle(fontSize: 20.0),
+                          style: new TextStyle(fontSize: 20),
                         ),
                         style: ButtonStyle(
                             side: MaterialStateProperty.all(
@@ -192,10 +179,8 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
                     new TextButton(
                         key: null,
                         onPressed: handleSalvaFoto,
-                        child: new Text(
-                          "Salva",
-                          style: new TextStyle(fontSize: 20.0),
-                        ),
+                        child: new Text("Salva",
+                            style: new TextStyle(fontSize: 20)),
                         style: ButtonStyle(
                             side: MaterialStateProperty.all(
                                 BorderSide(width: 2, color: Colors.blueGrey)),
@@ -260,7 +245,7 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
       http
           .post(Uri.https(API_SERVER_ADDR, '/'),
               headers: <String, String>{
-                'Content-Type': 'application/json; charset=UTF-8',
+                'Content-Type': 'application/json; charset=UTF-8'
               },
               body: jsonEncode(<String, dynamic>{
                 'request': 'editAvatar',
@@ -272,9 +257,7 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
         if (json['status'] == 'success') {
           sharedPrefs.setString('avatar', json['avatar']);
           Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage()),
-          );
+              context, MaterialPageRoute(builder: (context) => HomePage()));
         } else {
           var err = AlertDialog(
               title: Text(
