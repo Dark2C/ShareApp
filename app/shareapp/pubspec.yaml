@@ -28,11 +28,13 @@ dependencies:
   http: ^0.13.1
   image_picker: ^0.7.3
   intl: ^0.17.0
+  percent_indicator: "^2.1.7+2"
   permission_handler: ^6.1.1
   random_string: ^2.1.0
   shared_preferences: ^2.0.5
   sms_autofill: ^1.3.1
   url_launcher: ^6.0.3
+  chunked_stream: ^1.4.0
 
 
   # The following adds the Cupertino Icons font to your application.

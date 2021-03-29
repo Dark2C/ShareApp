@@ -62,7 +62,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
       await sharedPrefs.setString('username', json['username']);
       await sharedPrefs.setString('avatar', json['avatar']);
       return true;
-    } else {
+    } else if (json['status'] == 'error') {
       try {
         await sharedPrefs.remove('authKey');
       } catch (e) {}
@@ -75,8 +75,8 @@ class _MyLoginFormState extends State<MyLoginForm> {
       try {
         await sharedPrefs.remove('avatar');
       } catch (e) {}
-      return false;
     }
+    return false;
   }
 
   Future<void> init() async {
@@ -166,7 +166,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
 
   bool areFieldsFilled() {
     if (_username.text.isEmpty || _password.text.isEmpty) {
-      var err = AlertDialog(
+      AlertDialog err = AlertDialog(
           title: Text('I campi username e password sono obbligatori!'));
       showDialog<void>(context: context, builder: (context) => err);
     }
@@ -196,7 +196,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
                 context, MaterialPageRoute(builder: (context) => HomePage()));
           });
         } else {
-          var err = AlertDialog(
+          AlertDialog err = AlertDialog(
               title: Text("Utente inesistente o password non valida!"));
           showDialog<void>(context: context, builder: (context) => err);
         }
@@ -228,7 +228,7 @@ class _MyLoginFormState extends State<MyLoginForm> {
                 MaterialPageRoute(builder: (context) => SetProfilePhoto()));
           });
         } else {
-          var err = AlertDialog(
+          AlertDialog err = AlertDialog(
               title: Text("Il nome utente indicato è già esistente!"));
           showDialog<void>(context: context, builder: (context) => err);
         }

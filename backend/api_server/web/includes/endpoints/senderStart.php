@@ -23,7 +23,7 @@
             pollingCheck(function () {
                 global $conn, $sessKey;
                 // rimuovi i pendingShares in timeout
-                $stmt = $conn->prepare("DELETE FROM pendingShares WHERE requestDate < (NOW() - INTERVAL 10 SECOND)");
+                $stmt = $conn->prepare("DELETE FROM pendingShares WHERE requestDate < (NOW() - INTERVAL 30 SECOND)");
                 $stmt->execute();
 
                 $stmt = $conn->prepare("SELECT COUNT(*) AS resolved FROM pendingShares WHERE sessKey=? AND status != 0 LIMIT 1");

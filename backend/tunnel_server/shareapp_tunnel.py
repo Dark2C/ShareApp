@@ -60,17 +60,13 @@ def gestisciRichiesta(connectionSocket, addr):
             else:
                 # connessione stabilita
                 if peerType == 'S': # se sono il sender, mando i dati
-                    while True:
-                        data = connections[sessKey]['senderSocket'].recv(BUFF_SIZE)
-                        if len(data) > 0:
-                            connections[sessKey]['receiverSocket'].send(data)
-                        else:
-                            connections[sessKey]['senderSocket'].shutdown(SHUT_RDWR)
-                            connections[sessKey]['senderSocket'].close()
-                            connections[sessKey]['receiverSocket'].shutdown(SHUT_RDWR)
-                            connections[sessKey]['receiverSocket'].close()
-                            del connections[sessKey]
-                            break
+                    while data := connections[sessKey]['senderSocket'].recv(BUFF_SIZE):
+                        connections[sessKey]['receiverSocket'].send(data)
+                    connections[sessKey]['senderSocket'].shutdown(SHUT_RDWR)
+                    connections[sessKey]['senderSocket'].close()
+                    connections[sessKey]['receiverSocket'].shutdown(SHUT_RDWR)
+                    connections[sessKey]['receiverSocket'].close()
+                    del connections[sessKey]
         else:
             # parametro non valido
                 connectionSocket.shutdown(SHUT_RDWR)

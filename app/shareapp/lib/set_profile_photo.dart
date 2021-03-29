@@ -259,7 +259,7 @@ class _MySetProfilePhotoState extends State<MySetProfilePhoto> {
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (context) => HomePage()));
         } else {
-          var err = AlertDialog(
+          AlertDialog err = AlertDialog(
               title: Text(
                   "C'è stato un errore nell'elaborazione della richiesta!"));
           showDialog<void>(context: context, builder: (context) => err);
