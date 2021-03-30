@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'globals.dart';
 import 'package:chunked_stream/chunked_stream.dart';
 import 'package:contacts_service/contacts_service.dart';
+import 'package:crypto/crypto.dart';
+import 'package:downloads_path_provider/downloads_path_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -10,21 +16,37 @@ import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shareapp/main.dart';
+import 'package:shareapp/set_profile_photo.dart';
 import 'package:sms_autofill/sms_autofill.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'ShareApp',
-        theme: new ThemeData(
-            brightness: Brightness.dark,
-            primarySwatch: Colors.blue,
-            primaryColor: const Color(0xFF212121),
-            accentColor: const Color(0xFF64ffda),
-            canvasColor: const Color(0xFF303030)),
-        home: MyHomePage(title: 'ShareApp'));
+    return FutureBuilder(
+      // Initialize FlutterFire
+      future: Firebase.initializeApp(),
+      builder: (context, snapshot) {
+        // Check for errors
+        if (snapshot.hasError) {
+          return Text(
+              "C'è stato un errore nella connessione a firebase! Riavvia l'app e riprova.");
+        }
+        // Once complete, show your application
+        if (snapshot.connectionState == ConnectionState.done) {
+          return MaterialApp(
+              title: 'ShareApp',
+              theme: new ThemeData(
+                  brightness: Brightness.dark,
+                  primarySwatch: Colors.blue,
+                  primaryColor: const Color(0xFF212121),
+                  accentColor: const Color(0xFF64ffda),
+                  canvasColor: const Color(0xFF303030)),
+              home: MyHomePage(title: 'ShareApp'));
+        }
+        return CircularProgressIndicator();
+      },
+    );
   }
 }
 
@@ -53,6 +75,29 @@ class _MyHomePageState extends State<MyHomePage> {
       rubricaSync(askForNumber: false);
       getRubrica();
       isFirstStart = false;
+
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        if (message.notification != null)
+          handleFileReceive(message.data['fileName'],
+              int.parse(message.data['fileSize']), message.data['senderName']);
+      });
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        if (message.notification != null)
+          handleFileReceive(message.data['fileName'],
+              int.parse(message.data['fileSize']), message.data['senderName']);
+      });
+      FirebaseMessaging.instance.getToken().then((firebaseToken) async {
+        await sharedPrefs.setString('firebaseToken', firebaseToken);
+        await http.post(Uri.https(API_SERVER_ADDR, '/'),
+            headers: <String, String>{
+              'Content-Type': 'application/json; charset=UTF-8',
+            },
+            body: jsonEncode(<String, dynamic>{
+              'request': 'syncFirebaseToken',
+              'authentication': sharedPrefs.getString('authKey'),
+              'firebaseToken': firebaseToken,
+            }));
+      });
     }
 
     return Scaffold(
@@ -79,16 +124,23 @@ class _MyHomePageState extends State<MyHomePage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   new Padding(padding: const EdgeInsets.all(6)),
-                  new ClipOval(
-                    child: new Image.network(
-                        'https://' +
-                            API_SERVER_ADDR +
-                            '/avatars/' +
-                            sharedPrefs.getString('avatar'),
-                        fit: BoxFit.fill,
-                        width: 64,
-                        height: 64),
-                  ),
+                  TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => SetProfilePhoto()));
+                      },
+                      child: ClipOval(
+                        child: new Image.network(
+                            'https://' +
+                                API_SERVER_ADDR +
+                                '/avatars/' +
+                                sharedPrefs.getString('avatar'),
+                            fit: BoxFit.fill,
+                            width: 64,
+                            height: 64),
+                      )),
                   new Padding(padding: const EdgeInsets.all(12)),
                   new Text(sharedPrefs.getString('username'),
                       style: new TextStyle(
@@ -197,6 +249,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void doLogout() {
     sharedPrefs.remove('authKey').then((value) {
+      FirebaseMessaging.instance.deleteToken();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => FirstScreen()),
@@ -379,14 +432,38 @@ class _MyHomePageState extends State<MyHomePage> {
     return bl.toStringAsFixed(2) + " " + prefix + "B";
   }
 
-  void sendFileTo(int id, String receiverUsername) async {
+  void sendFileTo(
+      int id, String receiverUsername, String receiverFirebaseToken) async {
     FilePickerResult result = await FilePicker.platform.pickFiles();
     if (result != null) {
-      bool canceledBySender = false, aborted = false;
+      PlatformFile fileInfo = result.files.single;
+      File file = File(result.files.single.path);
+      bool canceledBySender = false, aborted = false, completed = false;
       StateSetter _setDialogTitle, _setDialogContent, _setPercentualState;
       Socket socket;
 
-      //TODO (firebase request)
+      // invio messaggio via firebase:
+      http.post(Uri.parse("https://fcm.googleapis.com/fcm/send"),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'key=' + FIREBASE_SERVER_KEY,
+          },
+          body: jsonEncode(<String, dynamic>{
+            'notification': {
+              'title': "Richiesta di invio file...",
+              'body': sharedPrefs.getString('username') +
+                  ' desidera inviarti un file...'
+            },
+            'priority': 'high',
+            'data': {
+              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+              'status': 'done',
+              'fileName': fileInfo.name,
+              'fileSize': fileInfo.size,
+              'senderName': sharedPrefs.getString('username')
+            },
+            'to': receiverFirebaseToken
+          }));
 
       Widget dialogTitle =
           Text("Ottenimento informazioni sul file in corso...");
@@ -397,10 +474,12 @@ class _MyHomePageState extends State<MyHomePage> {
             onPressed: () {
               canceledBySender = true;
               Navigator.of(context, rootNavigator: true).pop();
-              try {
-                socket.close();
-                socket.destroy();
-              } catch (e) {}
+              if (!completed) {
+                try {
+                  socket.close();
+                  socket.destroy();
+                } catch (e) {}
+              }
             },
             child: Text("Annulla"))
       ];
@@ -434,9 +513,6 @@ class _MyHomePageState extends State<MyHomePage> {
         },
       );
 
-      PlatformFile fileInfo = result.files.single;
-      File file = File(result.files.single.path);
-
       await Future.delayed(Duration(milliseconds: 25));
 
       dialogTitle = Text("Connessione a " + receiverUsername + " in corso...");
@@ -466,6 +542,8 @@ class _MyHomePageState extends State<MyHomePage> {
             socket = await Socket.connect(
                 json["tunnelHost"], json["tunnelPort"],
                 timeout: Duration(seconds: 5));
+
+            socket.setOption(SocketOption.tcpNoDelay, true);
 
             if (!canceledBySender) {
               double percentuale = 0;
@@ -514,30 +592,68 @@ class _MyHomePageState extends State<MyHomePage> {
               _setDialogTitle(() {});
               _setDialogContent(() {});
 
-              socket.drain().then((value) {
+              /*socket.drain().then((value) {
                 aborted = true;
-              });
+              });*/
 
               // mi identifico come sender
-              socket.add(utf8.encode(json["sessKey"] + "S"));
+              socket.add(utf8.encode(json["sessKey"]));
               // invio i dati verso il tunnel
 
-              // stabilisco, arbitrariamente, che un chunk è 1 MB
-              final chunkSize = 1024 * 1024;
+              // stabilisco, arbitrariamente, che un chunk è composto da 24 MTU
+              final int chunkSize = 24 * 1492 - 37;
               final reader = ChunkedStreamIterator(file.openRead());
               List<int> chunk;
               int chunkCount =
                       (fileInfo.size.toDouble() / chunkSize).ceil().toInt(),
                   chunkIndex = 0;
               try {
+                bool inPause = false, lastOk = false;
+
+                String esito = "";
+                StreamSubscription respByRecv = socket.listen((resp) {
+                  esito = esito + utf8.decode(resp).toLowerCase();
+                  // sostanzialmente se la stringa in risposta ha più s che n, il chunk è corretto
+                  lastOk = esito.replaceAll('n', '').length >
+                      esito.replaceAll('s', '').length;
+                  if (esito.length == 32) {
+                    esito = "";
+                    inPause = false;
+                  }
+                });
+
+                bool watchdog = false;
+                var watchdogStream =
+                    Stream<void>.periodic(Duration(seconds: 5), (_) {})
+                        .listen((event) {
+                  if (watchdog) {
+                    try {
+                      socket.close();
+                      aborted = true;
+                    } catch (e) {}
+                  } else
+                    watchdog = true;
+                });
+
                 while (!canceledBySender && !aborted) {
                   chunk = await reader.read(chunkSize);
-                  socket.add(chunk);
+                  do {
+                    watchdog = false;
+                    socket.add(utf8.encode(chunk.length.toString() + '|'));
+                    socket.add(utf8.encode(md5.convert(chunk).toString()));
+                    socket.add(chunk);
+                    inPause = true;
+                    while (inPause && (!canceledBySender && !aborted)) {
+                      await Future.delayed(Duration(milliseconds: 1));
+                    }
+                  } while (!lastOk && (!canceledBySender && !aborted));
                   chunkIndex++;
                   percentuale = chunkIndex.toDouble() / chunkCount.toDouble();
                   _setPercentualState(() {});
                   if (chunk.length < chunkSize) break;
                 }
+                watchdogStream.cancel();
+                respByRecv.cancel();
               } catch (e) {
                 aborted = true;
               }
@@ -653,7 +769,8 @@ class _MyHomePageState extends State<MyHomePage> {
         contactsList.add(new TextButton(
             key: null,
             onPressed: () {
-              sendFileTo(contactItem['ID'], contactItem['username']);
+              sendFileTo(contactItem['ID'], contactItem['username'],
+                  contactItem['firebaseToken']);
             },
             onLongPress: () {
               deleteContact(contactItem['ID']);
@@ -707,6 +824,301 @@ class _MyHomePageState extends State<MyHomePage> {
                     EdgeInsets.symmetric(vertical: 12, horizontal: 0)))));
       }
       setState(() {});
+    }
+  }
+
+  void handleFileReceive(
+      String fileName, dynamic fileSize, String senderName) async {
+    int fileSizeInt = int.parse(fileSize.toString());
+    String fileSizeBeautified = fileSizeBeautify(fileSizeInt);
+    String sessKey;
+    Socket socket;
+    bool completed = false;
+
+    http.Response resp = await http.post(Uri.https(API_SERVER_ADDR, '/'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'request': 'getReceiverPendingRequest',
+          'authentication': sharedPrefs.getString('authKey')
+        }));
+    Map<String, dynamic> json = jsonDecode(resp.body);
+    if (json["status"] == "success") {
+      if (json["sender"] == senderName &&
+          json["fileName"] == fileName &&
+          json["fileSize"] == fileSizeInt) {
+        sessKey = json["sessKey"];
+        bool aborted = true;
+
+        await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                  title: Text("Conferma ricezione file"),
+                  content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(senderName + " vuole inviarti il seguente file:"),
+                        Text("Nome: " + fileName),
+                        Text("Dimensioni: " + fileSizeBeautified),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                  onPressed: () async {
+                                    await http.post(
+                                        Uri.https(API_SERVER_ADDR, '/'),
+                                        headers: <String, String>{
+                                          'Content-Type':
+                                              'application/json; charset=UTF-8',
+                                        },
+                                        body: jsonEncode(<String, dynamic>{
+                                          'request': 'setReceiverConfirmation',
+                                          'authentication':
+                                              sharedPrefs.getString('authKey'),
+                                          'sessKey': json["sessKey"],
+                                          'response': -1,
+                                        }));
+                                    Navigator.of(context, rootNavigator: true)
+                                        .pop();
+                                  },
+                                  child: Text("Annulla")),
+                              TextButton(
+                                  onPressed: () async {
+                                    resp = await http.post(
+                                        Uri.https(API_SERVER_ADDR, '/'),
+                                        headers: <String, String>{
+                                          'Content-Type':
+                                              'application/json; charset=UTF-8',
+                                        },
+                                        body: jsonEncode(<String, dynamic>{
+                                          'request': 'setReceiverConfirmation',
+                                          'authentication':
+                                              sharedPrefs.getString('authKey'),
+                                          'sessKey': json["sessKey"],
+                                          'response': 1,
+                                        }));
+                                    json = jsonDecode(resp.body);
+                                    if (json["status"] == "success") {
+                                      aborted = false;
+                                    }
+                                    Navigator.of(context, rootNavigator: true)
+                                        .pop();
+                                  },
+                                  child: Text("Accetta"))
+                            ])
+                      ]));
+            });
+        if (!aborted) {
+          Directory tempDir = await DownloadsPathProvider.downloadsDirectory;
+          String tempPath = tempDir.path;
+          String filePath = tempPath + '/' + fileName;
+          int attempt = 2;
+          while (await File(filePath).exists()) {
+            filePath =
+                tempPath + '/(' + (attempt++).toString() + ') ' + fileName;
+          }
+          double percentuale = 0;
+          StateSetter _setDialogTitle,
+              _setDialogContent,
+              _setActionString,
+              _setPercentualState;
+          String dialogTitle = "Ricezione file in corso...";
+          String actionString = "Annulla";
+          Widget dialogContent = Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Puoi minimizzare l'app durante la ricezione del file."),
+              Divider(color: const Color(0x5e5e5e)),
+              Text("Nome: " + fileName),
+              Text("Dimensioni: " + fileSizeBeautified),
+              Text("Mittente: " + senderName),
+              Text("Salvato in: " + filePath),
+              new Padding(padding: const EdgeInsets.all(6)),
+              StatefulBuilder(
+                builder: (BuildContext context, StateSetter setState) {
+                  _setPercentualState = setState;
+                  return LinearPercentIndicator(
+                    width: MediaQuery.of(context).size.width - 128,
+                    animation: false,
+                    lineHeight: 20.0,
+                    percent: percentuale,
+                    center: Text((percentuale * 100).toStringAsFixed(2) + "%"),
+                    linearStrokeCap: LinearStrokeCap.roundAll,
+                    progressColor: Colors.greenAccent,
+                  );
+                },
+              )
+            ],
+          );
+          showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                    title: StatefulBuilder(
+                      builder: (BuildContext context, StateSetter setState) {
+                        _setDialogTitle = setState;
+                        return Text(dialogTitle);
+                      },
+                    ),
+                    content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          StatefulBuilder(
+                            builder:
+                                (BuildContext context, StateSetter setState) {
+                              _setDialogContent = setState;
+                              return dialogContent;
+                            },
+                          ),
+                          Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(onPressed: () async {
+                                  if (!completed) aborted = true;
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pop();
+                                }, child: StatefulBuilder(
+                                  builder: (BuildContext context,
+                                      StateSetter setState) {
+                                    _setActionString = setState;
+                                    return Text(actionString);
+                                  },
+                                ))
+                              ])
+                        ]));
+              });
+
+          int receivedBytes = 0;
+          bool watchdog = false;
+          bool writeError = false;
+          File writeFile = File(filePath);
+          try {
+            socket = await Socket.connect(
+                json["tunnelHost"], json["tunnelPort"],
+                timeout: Duration(seconds: 5));
+            socket.setOption(SocketOption.tcpNoDelay, true);
+            socket.add(utf8.encode(sessKey));
+
+            var dataStream = writeFile.openWrite();
+            int contentLength = 0, subVectIndex = 0;
+            List<int> prevRecvd = null;
+            socket.listen(
+                (List<int> recv) {
+                  watchdog = false;
+                  if (prevRecvd == null) {
+                    prevRecvd = recv;
+                    contentLength = int.parse(utf8
+                        .decode(prevRecvd.sublist(0, min(20, prevRecvd.length)),
+                            allowMalformed: true)
+                        .split('|')[0]);
+                    subVectIndex =
+                        utf8.encode(contentLength.toString() + '|').length;
+                  } else
+                    prevRecvd = prevRecvd + recv;
+                  if (contentLength == prevRecvd.length - subVectIndex - 32) {
+                    if (utf8.decode(
+                            prevRecvd.sublist(subVectIndex, subVectIndex + 32),
+                            allowMalformed: true) ==
+                        md5
+                            .convert(prevRecvd.sublist(subVectIndex + 32))
+                            .toString()) {
+                      receivedBytes += contentLength;
+                      List<int> buff = prevRecvd.sublist(subVectIndex + 32);
+                      dataStream.add(buff);
+                      prevRecvd = null;
+                      socket.add(utf8.encode('s' * 32));
+                    } else {
+                      prevRecvd = null;
+                      socket.add(utf8.encode('n' * 32));
+                    }
+                  }
+                },
+                cancelOnError: true,
+                onError: (error) {
+                  if (!completed) {
+                    aborted = true;
+                    dialogTitle = "Operazione interrotta!";
+                    dialogContent =
+                        Text("Il trasferimento del file è stato annullato!");
+                    _setDialogTitle(() {});
+                    _setDialogContent(() {});
+                  }
+                });
+            var watchdogStream =
+                Stream<void>.periodic(Duration(seconds: 5), (_) {})
+                    .listen((event) {
+              if (watchdog) {
+                try {
+                  socket.close();
+                } catch (e) {}
+              } else
+                watchdog = true;
+            });
+            var updatePercentual =
+                Stream<void>.periodic(Duration(milliseconds: 250), (_) {})
+                    .listen((event) {
+              percentuale = receivedBytes.toDouble() / fileSizeInt.toDouble();
+              _setPercentualState(() {});
+
+              if (receivedBytes == fileSizeInt) {
+                socket.close();
+              }
+            });
+
+            await socket.done;
+            dataStream.close();
+            watchdogStream.cancel();
+            updatePercentual.cancel();
+            if (receivedBytes == fileSizeInt) {
+              completed = true;
+              dialogTitle = "Trasferimento completato!";
+              dialogContent = Text(
+                  "Il trasferimento del file è stato competato con successo!");
+              actionString = "Chiudi";
+              _setDialogTitle(() {});
+              _setDialogContent(() {});
+              _setActionString(() {});
+            } else {
+              if (writeError) {
+                dialogTitle = "Operazione interrotta!";
+                dialogContent = Text("Impossibile salvare il file in memoria!");
+              } else {
+                dialogTitle = "Operazione interrotta!";
+                dialogContent =
+                    Text("Il trasferimento del file è stato annullato!");
+              }
+              _setDialogTitle(() {});
+              _setDialogContent(() {});
+              try {
+                await writeFile.delete();
+              } catch (e) {}
+            }
+          } catch (e) {
+            aborted = true;
+            dialogTitle = "Operazione interrotta!";
+            dialogContent =
+                Text("Il trasferimento del file è stato annullato!");
+            _setDialogTitle(() {});
+            _setDialogContent(() {});
+            try {
+              await writeFile.delete();
+            } catch (e) {}
+          }
+        }
+      }
+    } else {
+      if (json["message"] == "NO_PENDING_REQUESTS") {
+        AlertDialog err = AlertDialog(title: Text("La richiesta è scaduta!"));
+        showDialog<void>(context: context, builder: (context) => err);
+      }
     }
   }
 }

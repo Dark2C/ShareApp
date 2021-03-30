@@ -3,6 +3,7 @@ import 'globals.dart';
 import 'home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'set_profile_photo.dart';
 
@@ -84,15 +85,23 @@ class _MyLoginFormState extends State<MyLoginForm> {
     _isLogged = await checkLogin();
   }
 
+//Permission.storage.request();
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: init(),
-      builder: (context, snapshot) {
-        if (!_isLogged) return loginForm();
-        return HomePage();
-      },
-    );
+        future: init(),
+        builder: (context, snapshot) {
+          if (!_isLogged) return loginForm();
+          return FutureBuilder(
+              future: Permission.storage.request(),
+              builder: (context, AsyncSnapshot<PermissionStatus> snapshot) {
+                if (snapshot.data.isGranted) return HomePage();
+                return Center(
+                    child: Text(
+                        "L'app ha bisogno di accedere ai file per funzionare!",
+                        textAlign: TextAlign.center));
+              });
+        });
   }
 
   Widget loginForm() {
@@ -224,8 +233,10 @@ class _MyLoginFormState extends State<MyLoginForm> {
           sharedPrefs.setString('avatar', 'generic');
           sharedPrefs.setString('authKey', json['authKey']);
           checkLogin().then((value) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => SetProfilePhoto()));
+            if (value) {
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context) => SetProfilePhoto()));
+            }
           });
         } else {
           AlertDialog err = AlertDialog(

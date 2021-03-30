@@ -33,4 +33,13 @@
             'avatar' => $currUser['avatar']
         ]));
     }
+    if($req['request'] === 'syncFirebaseToken'){
+        $currUser = getRequestingUser($req);
+        $stmt = $conn->prepare("UPDATE users SET firebaseToken=? WHERE ID=?");
+        $stmt->bind_param("si", $req['firebaseToken'], $currUser['ID']);
+        $stmt->execute();
+        die(json_encode([
+            'status' => 'success'
+        ]));
+    }
 ?>

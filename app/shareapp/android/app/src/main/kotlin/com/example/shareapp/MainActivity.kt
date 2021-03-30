@@ -1,4 +1,4 @@
-package com.example.shareapp
+package com.cirociampaglia.shareapp
 
 import io.flutter.embedding.android.FlutterActivity
 

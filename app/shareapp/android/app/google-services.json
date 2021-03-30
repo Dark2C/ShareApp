@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1080281988677",
+    "project_id": "shareapp-22cc6",
+    "storage_bucket": "shareapp-22cc6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080281988677:android:330dadffa801d8af0f2d2c",
+        "android_client_info": {
+          "package_name": "com.cirociampaglia.shareapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1080281988677-c8ur4n4to165u8j74jptecdonhn36mtu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBquYoXNDRldoExbNW12ACJL_7qxYPHaCI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1080281988677-c8ur4n4to165u8j74jptecdonhn36mtu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

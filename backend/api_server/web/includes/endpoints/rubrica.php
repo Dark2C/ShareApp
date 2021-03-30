@@ -2,7 +2,7 @@
     if($req['request'] === 'listContacts'){
         $currUser = getRequestingUser($req);
         
-        $stmt = $conn->prepare("SELECT users.ID, users.username, users.lastSeen, users.avatar FROM users JOIN rubrica ON users.ID = rubrica.user_B WHERE rubrica.user_A=?");
+        $stmt = $conn->prepare("SELECT users.ID, users.username, users.lastSeen, users.avatar, users.firebaseToken FROM users JOIN rubrica ON users.ID = rubrica.user_B WHERE rubrica.user_A=?");
         $stmt->bind_param("i", $currUser['ID']);
         $stmt->execute();
         $result = $stmt->get_result();

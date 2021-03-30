@@ -30,7 +30,9 @@
         $stmt->bind_param("is", $req['response'], $req['sessKey']);
         $stmt->execute();
         die(json_encode([
-            'status' => 'success'
+            'status' => 'success',
+            'tunnelHost' => $TUNNEL['host'],
+            'tunnelPort' => $TUNNEL['port'],
         ]));
     }
 ?>
