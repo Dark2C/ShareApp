@@ -36,7 +36,7 @@ CREATE TABLE `users` (
   `authKey` char(64) NOT NULL,
   `avatar` varchar(255) NOT NULL DEFAULT 'generic.png',
   `phoneNumber` varchar(32) DEFAULT NULL,
-  `firebaseToken` varchar(255) NOT NULL
+  `firebaseToken` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
