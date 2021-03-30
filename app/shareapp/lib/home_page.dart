@@ -60,7 +60,6 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   String myPhoneNumber;
   bool isFirstStart = true;
-
   List<Widget> contactsList = [];
 
   @override
